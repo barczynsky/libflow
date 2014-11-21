@@ -1,7 +1,11 @@
 #pragma once
 #include <iostream>
-#include <flow/DataSource.h>
+#include <memory>
+#include <mutex>
+#include <thread>
+
 #include <flow/Node.h>
+#include <flow/DataSource.h>
 
 namespace flow
 {
@@ -25,9 +29,9 @@ namespace flow
 		~ONode()
 		{
 			this->kill();
+
 			if (sink_thread.joinable())
 				sink_thread.join();
-
 			sink_stream.release();
 		}
 

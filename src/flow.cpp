@@ -1,37 +1,49 @@
-#include <csignal>
-// #include <cstdlib>
-#include <deque>
+#include <atomic>
 #include <functional>
+#include <future>
+#include <vector>
+
+#include <csignal>
+
 #include <flow/flow.h>
 #include <flow/Node.h>
 
 namespace flow
 {
-	std::mutex flow_mtx;
 	std::atomic<bool> flowing{ false };
+	std::promise<void> flow_promise;
+	std::shared_future<void> flow_future{ flow_promise.get_future() };
 
-	std::promise<bool> flow_promise;
-	std::shared_future<bool> flow_future{ flow_promise.get_future() };
-
-	void sigint(bool action) { action ? signal(SIGINT, &flow::abort) : signal(SIGINT, SIG_IGN); }
-	bool init_sync() { flow::sigint(true); return flow_future.get() && flowing.load(); }
-	bool fast_sync() { return flowing.load(); };
+	bool init_sync() { flow_future.get(); return flowing.load(); }
+	bool fast_sync() { return flowing.load(); }
 	std::function<bool()> flow_sync{ init_sync };
 
-	std::deque<Module*> modules;
-	void kill(Module* module)
+	std::vector<Module*> modules;
+	void to_kill(Module* module)
 	{
 		modules.push_back(module);
 	}
 
+	void notify_all()
+	{
+		for (auto module : modules)
+			module->notify();
+	}
+
+	void kill_all()
+	{
+		for (auto module : modules)
+			module->kill();
+		// modules.clear();
+	}
+
 	void run()
 	{
-		std::lock_guard<std::mutex> lck(flow_mtx);
-		if (flowing.load()) return;
 		flowing.store(true);
-		flow_sync = fast_sync;
-		// flow_sync.assign(fast_sync);
-		flow_promise.set_value(true);
+		// flow_sync.assign(fast_sync); // TODO: not supported (g++ 4.9.1)
+		flow_sync = fast_sync; // TODO: remove on above supported
+		try { flow_promise.set_value(); }
+		catch (std::future_error&) {}
 	}
 
 	bool sync()
@@ -39,14 +51,30 @@ namespace flow
 		return flow_sync();
 	}
 
-	void abort(int)
+	void flow_halt(int)
 	{
-		if (flowing.load())
-			flowing.store(false);
-		else
-			flow_promise.set_value(false);
-		for (auto module : modules)
-			module->kill();
+		flowing.store(false);
+		try { flow_promise.set_value(); }
+		catch (std::future_error&) {}
+		flow::kill_all();
 	}
+
+	void halt()
+	{
+		flow_halt(0);
+	}
+
+	void sigint(bool action)
+	{
+		if (action) std::signal(SIGINT, flow_halt);
+		else std::signal(SIGINT, SIG_IGN);
+	}
+
+	auto flow_main()
+	{
+		flow::sigint();
+		return 0;
+	}
+	auto flow_init = flow_main();
 
 } // namespace flow

@@ -1,4 +1,9 @@
 #pragma once
+#include <condition_variable>
+// #include <functional>
+#include <memory>
+#include <mutex>
+
 #include <flow/flow.h>
 
 namespace flow
@@ -6,27 +11,29 @@ namespace flow
 	class Node : public Module
 	{
 	private:
-		bool running{ true };
 		bool dead{ false };
+		bool running{ true };
 
 	private:
 		std::mutex runtime_mtx;
 		std::condition_variable runtime_cv;
 
 	protected:
-		std::unique_ptr<Node> parent;
+		std::unique_ptr<Node> lnode;
+		std::unique_ptr<Node> rnode;
 
 	public:
 		Node()
 		{
-			flow::kill(this);
+			flow::to_kill(this);
 		}
 
 		~Node()
 		{
 			this->kill();
 
-			parent.release();
+			lnode.release();
+			rnode.release();
 		}
 
 		void notify()
@@ -43,6 +50,21 @@ namespace flow
 		}
 
 	protected:
+		void bindLNode(Node* node)
+		{
+			node->bindRNode(node);
+			lnode.release();
+			lnode.reset(node);
+		}
+
+		void bindRNode(Node* node)
+		{
+			node->bindLNode(node);
+			rnode.release();
+			rnode.reset(node);
+		}
+
+	protected:
 		bool runOrDie()
 		{
 			std::unique_lock<std::mutex> lck(runtime_mtx);
@@ -50,12 +72,12 @@ namespace flow
 			return dead;
 		}
 
-		bool trueOrDie(std::function<bool()> pred)
-		{
-			std::unique_lock<std::mutex> lck(runtime_mtx);
-			runtime_cv.wait(lck, [&, this]{ return pred() || dead; });
-			return dead;
-		}
+		// bool trueOrDie(std::function<bool()> pred)
+		// {
+		// 	std::unique_lock<std::mutex> lck(runtime_mtx);
+		// 	runtime_cv.wait(lck, [&, this]{ return pred() || dead; });
+		// 	return dead;
+		// }
 
 	public:
 		void start()
@@ -69,19 +91,7 @@ namespace flow
 		{
 			std::lock_guard<std::mutex> lck(runtime_mtx);
 			running = false;
-		}
-
-	public:
-		void bindNode(Node& node)
-		{
-			node.bindParentNode(this);
-			// add_child(node);
-		}
-
-		void bindParentNode(Node* node)
-		{
-			parent.release();
-			parent.reset(node);
+			runtime_cv.notify_all();
 		}
 
 	}; // class Node

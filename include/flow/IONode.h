@@ -1,7 +1,11 @@
 #pragma once
 #include <iostream>
-#include <flow/DataSource.h>
+#include <memory>
+#include <mutex>
+#include <thread>
+
 #include <flow/Node.h>
+#include <flow/DataSource.h>
 
 namespace flow
 {
@@ -80,19 +84,19 @@ namespace flow
 					if (block == nullptr)
 						break;
 
-					size_t size = data_supply.getValueSize() * block->size();
 					auto data = (char*)block->data();
+					size_t data_size = block->data_size();
 					// read()
 					std::lock_guard<std::mutex> lck(source_mtx);
 					size_t count = 0;
-					while (!source_stream->eof() && count < size)
-						count += source_stream->read(data + count, size - count).gcount();
+					while (source_stream->good() && count < data_size)
+						count += source_stream->read(data + count, data_size - count).gcount();
 
-					block->resize(count);
-					if (count)
+					block->data_resize(count);
+					if (count > 0)
 						block->make_active();
 
-					if (source_stream->eof())
+					if (!source_stream->good())
 						break;
 				}
 			});
@@ -116,11 +120,14 @@ namespace flow
 					if (block == nullptr)
 						break;
 
-					size_t size = data_supply.getValueSize() * block->size();
 					auto data = (char*)block->data();
+					size_t data_size = block->data_size();
 					// write()
 					std::lock_guard<std::mutex> lck(sink_mtx);
-					sink_stream->write(data, size).flush();
+					sink_stream->write(data, data_size).flush();
+
+					if (!sink_stream->good())
+						break;
 				}
 			});
 		}

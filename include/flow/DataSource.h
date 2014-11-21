@@ -1,9 +1,10 @@
 #pragma once
 #include <condition_variable>
 #include <deque>
+#include <memory>
 #include <mutex>
-#include <vector>
 #include <unordered_set>
+
 #include <flow/flow.h>
 #include <flow/DataBlock.h>
 
@@ -43,16 +44,12 @@ namespace flow
 		block_size{ size },
 		block_qty{ qty }
 		{
-			flow::kill(this);
+			flow::to_kill(this);
 
 			vacant_blocks.resize(block_qty);
 			for (auto & block : vacant_blocks)
 			{
-#if __cplusplus>=201300L
 				block = std::make_unique<DataType>(block_size);
-#else
-				block.reset(new DataType(block_size));
-#endif
 			}
 		}
 
@@ -145,6 +142,7 @@ namespace flow
 				std::lock_guard<std::mutex> lck(vacant_mtx);
 				vacant_blocks.emplace_back(ptr);
 				vacant_cv.notify_one();
+
 				ptr->make_vacant(); // diff
 
 				std::lock_guard<std::mutex> shlck(shared_mtx);

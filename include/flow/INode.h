@@ -1,7 +1,11 @@
 #pragma once
 #include <iostream>
-#include <flow/DataSource.h>
+#include <memory>
+#include <mutex>
+#include <thread>
+
 #include <flow/Node.h>
+#include <flow/DataSource.h>
 
 namespace flow
 {
@@ -28,7 +32,6 @@ namespace flow
 
 			if (source_thread.joinable())
 				source_thread.join();
-
 			source_stream.release();
 		}
 
@@ -62,16 +65,12 @@ namespace flow
 					std::lock_guard<std::mutex> lck(source_mtx);
 					size_t count = 0;
 					while (source_stream->good() && count < data_size)
-					{
 						count += source_stream->read(data + count, data_size - count).gcount();
-					}
 
-					if (block)
-					{
-						block->data_resize(count);
-						if (count > 0)
-							block->make_active();
-					}
+					block->data_resize(count);
+					if (count > 0)
+						block->make_active();
+
 					if (!source_stream->good())
 						break;
 				}
