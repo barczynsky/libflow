@@ -52,6 +52,7 @@ namespace flow
 				block = std::make_unique<DataType>(block_size);
 			}
 		}
+		DataSource(const DataSource&) = delete;
 
 		~DataSource()
 		{

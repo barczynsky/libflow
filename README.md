@@ -18,7 +18,7 @@ cmake ..
 make
 ```
 
-You will end up with the main libflow shared object (libflow.so) and a simple dataflow example, usually presenting recent features and fixes.
+You will end up with the main libflow shared object (libflow.so) and a bunch of simple examples, usually presenting recent features and fixes.
 
 - Recommended C++ standard used for compiling is C++14. Only some minor elements of it may be in use, but this alone needs a C++14 conformant compiler or high enough standard extensions support.
 
@@ -41,4 +41,3 @@ You will end up with the main libflow shared object (libflow.so) and a simple da
 
 - think over ConvertNode class (storage-less converter)
 - create other nodes (e.g. ZeroMQ sockets)
-- consider using weak_ptr for storing node references

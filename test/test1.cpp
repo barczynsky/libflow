@@ -14,9 +14,9 @@ int main()
 {
 	fprintf(stderr, "__cplusplus=%ld\n", __cplusplus);
 
-	flow::INode<float> source_node(64*1024, 2);
+	flow::INode<float> source_node(65*1024, 2);
 	source_node.bindSource(std::cin);
-	flow::ONode<short> sink_node(64*1024, 2);
+	flow::ONode<short> sink_node(65*1024, 2);
 	sink_node.bindSink(std::cout);
 
 	// flow::IONode<char> pipe_node(64*1024, 2);

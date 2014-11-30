@@ -10,13 +10,14 @@
 
 namespace flow
 {
-	std::atomic<bool> flowing{ false };
+	std::atomic_bool flowing{ false };
 	std::promise<void> flow_promise;
 	std::shared_future<void> flow_future{ flow_promise.get_future() };
 
 	bool init_sync() { flow_future.get(); return flowing.load(); }
 	bool fast_sync() { return flowing.load(); }
-	std::function<bool()> flow_sync{ init_sync };
+	// std::atomic<std::function<bool()>> flow_sync{ init_sync }; // TODO: not supported (ISO C++14)
+	std::atomic<bool(*)()> flow_sync{ init_sync };
 
 	std::vector<Module*> modules;
 	void to_kill(Module* module)
@@ -41,17 +42,17 @@ namespace flow
 	{
 		flowing.store(true);
 		// flow_sync.assign(fast_sync); // TODO: not supported (g++ 4.9.1)
-		flow_sync = fast_sync; // TODO: remove on above supported
+		flow_sync.store(fast_sync); // TODO: remove on assign() supported
 		try { flow_promise.set_value(); }
 		catch (std::future_error&) {}
 	}
 
 	bool sync()
 	{
-		return flow_sync();
+		return flow_sync.load()();
 	}
 
-	void flow_halt(int)
+	void flow_halt(int = SIGINT)
 	{
 		flowing.store(false);
 		try { flow_promise.set_value(); }
@@ -61,7 +62,7 @@ namespace flow
 
 	void halt()
 	{
-		flow_halt(0);
+		flow_halt();
 	}
 
 	void sigint(bool action)

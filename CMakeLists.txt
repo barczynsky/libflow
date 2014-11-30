@@ -36,10 +36,9 @@ include_directories("include")
 
 
 # -----------------------------------------------------------------------------
-# ${FLOW_SRC} || ${TEST_SRC}
+# ${SRC}
 # -----------------------------------------------------------------------------
-aux_source_directory("src" FLOW_SRC)
-aux_source_directory("test" TEST_SRC)
+# aux_source_directory("src" SRC)
 
 
 # -----------------------------------------------------------------------------
@@ -52,15 +51,13 @@ aux_source_directory("test" TEST_SRC)
 # -----------------------------------------------------------------------------
 # add_executable() || add_library()
 # -----------------------------------------------------------------------------
-add_library(flow SHARED ${FLOW_SRC})
+add_library(flow SHARED "src/flow.cpp")
 
-add_executable(flowtest ${TEST_SRC})
-add_dependencies(flowtest flow)
-target_link_libraries(flowtest flow)
+add_executable(test1 "test/test1.cpp")
+add_dependencies(test1 flow)
+target_link_libraries(test1 flow)
 
-
-# -----------------------------------------------------------------------------
-# message()
-# -----------------------------------------------------------------------------
-message("\nLibrary: '${FLOW_SRC}'\nExamples: '${TEST_SRC}'\nOther: '${LIBS}'\n")
+add_executable(test2 "test/test2.cpp")
+add_dependencies(test2 flow)
+target_link_libraries(test2 flow)
 
